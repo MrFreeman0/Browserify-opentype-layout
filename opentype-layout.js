@@ -1,4 +1,231 @@
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.opentypeLayout = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+require=(function(){function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s}return e})()({1:[function(require,module,exports){
+module.exports = function () {
+    for (var i = 0; i < arguments.length; i++) {
+        if (arguments[i] !== undefined) return arguments[i];
+    }
+};
+
+},{}],2:[function(require,module,exports){
+/*
+object-assign
+(c) Sindre Sorhus
+@license MIT
+*/
+
+'use strict';
+/* eslint-disable no-unused-vars */
+var getOwnPropertySymbols = Object.getOwnPropertySymbols;
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+var propIsEnumerable = Object.prototype.propertyIsEnumerable;
+
+function toObject(val) {
+	if (val === null || val === undefined) {
+		throw new TypeError('Object.assign cannot be called with null or undefined');
+	}
+
+	return Object(val);
+}
+
+function shouldUseNative() {
+	try {
+		if (!Object.assign) {
+			return false;
+		}
+
+		// Detect buggy property enumeration order in older V8 versions.
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=4118
+		var test1 = new String('abc');  // eslint-disable-line no-new-wrappers
+		test1[5] = 'de';
+		if (Object.getOwnPropertyNames(test1)[0] === '5') {
+			return false;
+		}
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
+		var test2 = {};
+		for (var i = 0; i < 10; i++) {
+			test2['_' + String.fromCharCode(i)] = i;
+		}
+		var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
+			return test2[n];
+		});
+		if (order2.join('') !== '0123456789') {
+			return false;
+		}
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
+		var test3 = {};
+		'abcdefghijklmnopqrst'.split('').forEach(function (letter) {
+			test3[letter] = letter;
+		});
+		if (Object.keys(Object.assign({}, test3)).join('') !==
+				'abcdefghijklmnopqrst') {
+			return false;
+		}
+
+		return true;
+	} catch (err) {
+		// We don't expect any of the above to throw, but better to be safe.
+		return false;
+	}
+}
+
+module.exports = shouldUseNative() ? Object.assign : function (target, source) {
+	var from;
+	var to = toObject(target);
+	var symbols;
+
+	for (var s = 1; s < arguments.length; s++) {
+		from = Object(arguments[s]);
+
+		for (var key in from) {
+			if (hasOwnProperty.call(from, key)) {
+				to[key] = from[key];
+			}
+		}
+
+		if (getOwnPropertySymbols) {
+			symbols = getOwnPropertySymbols(from);
+			for (var i = 0; i < symbols.length; i++) {
+				if (propIsEnumerable.call(from, symbols[i])) {
+					to[symbols[i]] = from[symbols[i]];
+				}
+			}
+		}
+	}
+
+	return to;
+};
+
+},{}],3:[function(require,module,exports){
+var newline = /\n/
+var newlineChar = '\n'
+var whitespace = /\s/
+
+module.exports = function(text, opt) {
+    var lines = module.exports.lines(text, opt)
+    return lines.map(function(line) {
+        return text.substring(line.start, line.end)
+    }).join('\n')
+}
+
+module.exports.lines = function wordwrap(text, opt) {
+    opt = opt||{}
+
+    //zero width results in nothing visible
+    if (opt.width === 0 && opt.mode !== 'nowrap') 
+        return []
+
+    text = text||''
+    var width = typeof opt.width === 'number' ? opt.width : Number.MAX_VALUE
+    var start = Math.max(0, opt.start||0)
+    var end = typeof opt.end === 'number' ? opt.end : text.length
+    var mode = opt.mode
+
+    var measure = opt.measure || monospace
+    if (mode === 'pre')
+        return pre(measure, text, start, end, width)
+    else
+        return greedy(measure, text, start, end, width, mode)
+}
+
+function idxOf(text, chr, start, end) {
+    var idx = text.indexOf(chr, start)
+    if (idx === -1 || idx > end)
+        return end
+    return idx
+}
+
+function isWhitespace(chr) {
+    return whitespace.test(chr)
+}
+
+function pre(measure, text, start, end, width) {
+    var lines = []
+    var lineStart = start
+    for (var i=start; i<end && i<text.length; i++) {
+        var chr = text.charAt(i)
+        var isNewline = newline.test(chr)
+
+        //If we've reached a newline, then step down a line
+        //Or if we've reached the EOF
+        if (isNewline || i===end-1) {
+            var lineEnd = isNewline ? i : i+1
+            var measured = measure(text, lineStart, lineEnd, width)
+            lines.push(measured)
+            
+            lineStart = i+1
+        }
+    }
+    return lines
+}
+
+function greedy(measure, text, start, end, width, mode) {
+    //A greedy word wrapper based on LibGDX algorithm
+    //https://github.com/libgdx/libgdx/blob/master/gdx/src/com/badlogic/gdx/graphics/g2d/BitmapFontCache.java
+    var lines = []
+
+    var testWidth = width
+    //if 'nowrap' is specified, we only wrap on newline chars
+    if (mode === 'nowrap')
+        testWidth = Number.MAX_VALUE
+
+    while (start < end && start < text.length) {
+        //get next newline position
+        var newLine = idxOf(text, newlineChar, start, end)
+
+        //eat whitespace at start of line
+        while (start < newLine) {
+            if (!isWhitespace( text.charAt(start) ))
+                break
+            start++
+        }
+
+        //determine visible # of glyphs for the available width
+        var measured = measure(text, start, newLine, testWidth)
+
+        var lineEnd = start + (measured.end-measured.start)
+        var nextStart = lineEnd + newlineChar.length
+
+        //if we had to cut the line before the next newline...
+        if (lineEnd < newLine) {
+            //find char to break on
+            while (lineEnd > start) {
+                if (isWhitespace(text.charAt(lineEnd)))
+                    break
+                lineEnd--
+            }
+            if (lineEnd === start) {
+                if (nextStart > start + newlineChar.length) nextStart--
+                lineEnd = nextStart // If no characters to break, show all.
+            } else {
+                nextStart = lineEnd
+                //eat whitespace at end of line
+                while (lineEnd > start) {
+                    if (!isWhitespace(text.charAt(lineEnd - newlineChar.length)))
+                        break
+                    lineEnd--
+                }
+            }
+        }
+        if (lineEnd >= start) {
+            var result = measure(text, start, lineEnd, testWidth)
+            lines.push(result)
+        }
+        start = nextStart
+    }
+    return lines
+}
+
+//determines the visible number of glyphs within a given width
+function monospace(text, start, end, width) {
+    var glyphs = Math.min(width, end-start)
+    return {
+        start: start,
+        end: start+glyphs
+    }
+}
+},{}],"opentype-layout":[function(require,module,exports){
 var defined = require('defined');
 var wordWrapper = require('word-wrapper');
 var assign = require('object-assign');
@@ -180,232 +407,4 @@ function ensureMetrics (glyph) {
   return glyph.path;
 }
 
-},{"defined":2,"object-assign":3,"word-wrapper":4}],2:[function(require,module,exports){
-module.exports = function () {
-    for (var i = 0; i < arguments.length; i++) {
-        if (arguments[i] !== undefined) return arguments[i];
-    }
-};
-
-},{}],3:[function(require,module,exports){
-/*
-object-assign
-(c) Sindre Sorhus
-@license MIT
-*/
-
-'use strict';
-/* eslint-disable no-unused-vars */
-var getOwnPropertySymbols = Object.getOwnPropertySymbols;
-var hasOwnProperty = Object.prototype.hasOwnProperty;
-var propIsEnumerable = Object.prototype.propertyIsEnumerable;
-
-function toObject(val) {
-	if (val === null || val === undefined) {
-		throw new TypeError('Object.assign cannot be called with null or undefined');
-	}
-
-	return Object(val);
-}
-
-function shouldUseNative() {
-	try {
-		if (!Object.assign) {
-			return false;
-		}
-
-		// Detect buggy property enumeration order in older V8 versions.
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=4118
-		var test1 = new String('abc');  // eslint-disable-line no-new-wrappers
-		test1[5] = 'de';
-		if (Object.getOwnPropertyNames(test1)[0] === '5') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test2 = {};
-		for (var i = 0; i < 10; i++) {
-			test2['_' + String.fromCharCode(i)] = i;
-		}
-		var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
-			return test2[n];
-		});
-		if (order2.join('') !== '0123456789') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test3 = {};
-		'abcdefghijklmnopqrst'.split('').forEach(function (letter) {
-			test3[letter] = letter;
-		});
-		if (Object.keys(Object.assign({}, test3)).join('') !==
-				'abcdefghijklmnopqrst') {
-			return false;
-		}
-
-		return true;
-	} catch (err) {
-		// We don't expect any of the above to throw, but better to be safe.
-		return false;
-	}
-}
-
-module.exports = shouldUseNative() ? Object.assign : function (target, source) {
-	var from;
-	var to = toObject(target);
-	var symbols;
-
-	for (var s = 1; s < arguments.length; s++) {
-		from = Object(arguments[s]);
-
-		for (var key in from) {
-			if (hasOwnProperty.call(from, key)) {
-				to[key] = from[key];
-			}
-		}
-
-		if (getOwnPropertySymbols) {
-			symbols = getOwnPropertySymbols(from);
-			for (var i = 0; i < symbols.length; i++) {
-				if (propIsEnumerable.call(from, symbols[i])) {
-					to[symbols[i]] = from[symbols[i]];
-				}
-			}
-		}
-	}
-
-	return to;
-};
-
-},{}],4:[function(require,module,exports){
-var newline = /\n/
-var newlineChar = '\n'
-var whitespace = /\s/
-
-module.exports = function(text, opt) {
-    var lines = module.exports.lines(text, opt)
-    return lines.map(function(line) {
-        return text.substring(line.start, line.end)
-    }).join('\n')
-}
-
-module.exports.lines = function wordwrap(text, opt) {
-    opt = opt||{}
-
-    //zero width results in nothing visible
-    if (opt.width === 0 && opt.mode !== 'nowrap') 
-        return []
-
-    text = text||''
-    var width = typeof opt.width === 'number' ? opt.width : Number.MAX_VALUE
-    var start = Math.max(0, opt.start||0)
-    var end = typeof opt.end === 'number' ? opt.end : text.length
-    var mode = opt.mode
-
-    var measure = opt.measure || monospace
-    if (mode === 'pre')
-        return pre(measure, text, start, end, width)
-    else
-        return greedy(measure, text, start, end, width, mode)
-}
-
-function idxOf(text, chr, start, end) {
-    var idx = text.indexOf(chr, start)
-    if (idx === -1 || idx > end)
-        return end
-    return idx
-}
-
-function isWhitespace(chr) {
-    return whitespace.test(chr)
-}
-
-function pre(measure, text, start, end, width) {
-    var lines = []
-    var lineStart = start
-    for (var i=start; i<end && i<text.length; i++) {
-        var chr = text.charAt(i)
-        var isNewline = newline.test(chr)
-
-        //If we've reached a newline, then step down a line
-        //Or if we've reached the EOF
-        if (isNewline || i===end-1) {
-            var lineEnd = isNewline ? i : i+1
-            var measured = measure(text, lineStart, lineEnd, width)
-            lines.push(measured)
-            
-            lineStart = i+1
-        }
-    }
-    return lines
-}
-
-function greedy(measure, text, start, end, width, mode) {
-    //A greedy word wrapper based on LibGDX algorithm
-    //https://github.com/libgdx/libgdx/blob/master/gdx/src/com/badlogic/gdx/graphics/g2d/BitmapFontCache.java
-    var lines = []
-
-    var testWidth = width
-    //if 'nowrap' is specified, we only wrap on newline chars
-    if (mode === 'nowrap')
-        testWidth = Number.MAX_VALUE
-
-    while (start < end && start < text.length) {
-        //get next newline position
-        var newLine = idxOf(text, newlineChar, start, end)
-
-        //eat whitespace at start of line
-        while (start < newLine) {
-            if (!isWhitespace( text.charAt(start) ))
-                break
-            start++
-        }
-
-        //determine visible # of glyphs for the available width
-        var measured = measure(text, start, newLine, testWidth)
-
-        var lineEnd = start + (measured.end-measured.start)
-        var nextStart = lineEnd + newlineChar.length
-
-        //if we had to cut the line before the next newline...
-        if (lineEnd < newLine) {
-            //find char to break on
-            while (lineEnd > start) {
-                if (isWhitespace(text.charAt(lineEnd)))
-                    break
-                lineEnd--
-            }
-            if (lineEnd === start) {
-                if (nextStart > start + newlineChar.length) nextStart--
-                lineEnd = nextStart // If no characters to break, show all.
-            } else {
-                nextStart = lineEnd
-                //eat whitespace at end of line
-                while (lineEnd > start) {
-                    if (!isWhitespace(text.charAt(lineEnd - newlineChar.length)))
-                        break
-                    lineEnd--
-                }
-            }
-        }
-        if (lineEnd >= start) {
-            var result = measure(text, start, lineEnd, testWidth)
-            lines.push(result)
-        }
-        start = nextStart
-    }
-    return lines
-}
-
-//determines the visible number of glyphs within a given width
-function monospace(text, start, end, width) {
-    var glyphs = Math.min(width, end-start)
-    return {
-        start: start,
-        end: start+glyphs
-    }
-}
-},{}]},{},[1])(1)
-});
+},{"defined":1,"object-assign":2,"word-wrapper":3}]},{},[]);
